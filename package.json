@@ -1,0 +1,11 @@
+{
+  "name": "move-that-bus",
+  "version": "0.0.1",
+  "description": "Move scripts",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC"
+}
