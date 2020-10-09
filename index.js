@@ -32,7 +32,7 @@ function repathImports(Proj, rootPath, componentName) {
     `${rootPath}/packages/react-internal/src/components/${componentName}/**`
   );
 
-  const reg = /\@fluentui\/(react-internal|react|react-next).+\/lib/;
+  const reg = /@fluentui\/(react-internal|react|react-next)\/lib/;
   for (let file of MovedFiles) {
     const imports = file
       .getImportDeclarations()
