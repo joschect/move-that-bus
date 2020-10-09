@@ -24,6 +24,7 @@ function HandleRenames() {
 
   deleteAndMove(Proj, rootPath, componentName);
   repathImports(Proj, rootPath, componentName);
+
 }
 
 function repathImports(Proj, rootPath, componentName) {
@@ -48,6 +49,14 @@ function repathImports(Proj, rootPath, componentName) {
       impValue.setLiteralValue(newPath);
     }
   }
+
+  // Repath the next to point at react-internal
+  const file = Proj.addSourceFileAtPathIfExists(`${rootPath}/packages/react-next/src/${componentName}.ts`)
+  const mod = file.getExportDeclaration(
+    (v) => v.getModuleSpecifierValue().indexOf(componentName) > -1
+  );
+  mod.setModuleSpecifier(`@fluentui/react/lib/${componentName}`);
+
   Proj.saveSync();
 }
 
