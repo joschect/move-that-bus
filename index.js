@@ -1,13 +1,15 @@
 const morphin = require("ts-morph");
-const { Maybe } = require("./maybe");
+const Maybe = require("./maybe");
+var fs = require('fs');
+var path = require("path");
 const { Project, ScriptTarget, ModuleResolutionKind } = morphin;
 
 const startPath = __dirname;
 try {
-  const path = process.argv[2];
+  const offPath = process.argv[2];
   const componentName = process.argv[3];
 
-  if (!path) {
+  if (!offPath) {
     throw "need a path to the root folder";
   }
   if (!componentName) {
@@ -16,66 +18,89 @@ try {
 
   const Proj = new Project({
     compilerOptions: {
-      target: ScriptTarget.ES2015,
       moduleResolution: ModuleResolutionKind.NodeJs,
       noResolve: true,
       traceResolution: false,
     },
   });
-  const nextDir = Maybe(
+
+  deleteAndMove(Proj, offPath, componentName);
+  
+  Proj.save();
+    const MovedFiles = Proj.addSourceFilesAtPaths(
+      `${offPath}/packages/react-internal/src/components/${componentName}/**`
+    )
+
+    let reg = /\@fluentui\/(react-internal|react|react-next).+\/lib/
+    for(let file of MovedFiles) {
+      let imports = file.getImportDeclarations().filter(v => reg.test(v.getText()));
+        for(let imp of imports) {
+          let impValue = imp.getModuleSpecifier();
+          let txt = impValue.getLiteralValue().replace(reg, '');
+          console.log("renaming ", txt.getLiteralValue(), " to ", path.relative(file.getFilePath(), `${offPath}/packages/react-internal/src/components/${txt}`));
+
+          impValue.setLiteralValue(path.relative(file.getFilePath(), `${offPath}/packages/react-internal/src/components/${txt}`));
+      }
+    }
+  Proj.save();
+} catch (e) {
+  throw e;
+} finally {
+  process.cwd(startPath);
+}
+
+function deleteAndMove(Proj, offPath, componentName) {
+
+  const nextDir = Maybe.of(
     Proj.addDirectoryAtPathIfExists(
-      `${path}/packages/react-next/src/components/${componentName}`
+      `${offPath}/packages/react-next/src/components/${componentName}`
     )
   );
-  const internalDir = Maybe(
+  const internalDir = Maybe.of(
     Proj.addDirectoryAtPathIfExists(
-      `${path}/packages/react-internal/src/components/${componentName}`
+      `${offPath}/packages/react-internal/src/components/${componentName}`
     )
   );
-  const exampleNext = Maybe(
+  const exampleNext = Maybe.of(
     Proj.addDirectoryAtPathIfExists(
-      `${path}/packages/react-examples/src/react-next/${componentName}`
+      `${offPath}/packages/react-examples/src/react-next/${componentName}`
     )
   );
-  const exampleReact = Maybe(
-    Proj.addDirectoryAtPathIfExists(
-      `${path}/packages/react-examples/src/react/${componentName}`
-    )
-  );
-  const perfFile = Maybe(
+  // const exampleReact = Maybe(
+  //   Proj.addDirectoryAtPathIfExists(
+  //     `${path}/packages/react-examples/src/react/${componentName}`
+  //   )
+  // );
+  const perfFile = Maybe.of(
     Proj.addSourceFileAtPathIfExists(
-      `${path}/apps/perf-test/src/scenarios/${componentName}Next.tsx`
+      `${offPath}/apps/perf-test/src/scenarios/${componentName}Next.tsx`
     )
   );
-  const vrFile = Maybe(
+  const vrFile = Maybe.of(
     Proj.addSourceFileAtPathIfExists(
-      `${path}/apps/vr-tests/src/stories/${componentName}Next.stories.tsx`
+      `${offPath}/apps/vr-tests/src/stories/${componentName}Next.stories.tsx`
     )
   );
 
   internalDir.then((v) => v.deleteImmediately());
 
   nextDir.then(v => v.moveToDirectory(
-    Proj.addDirectoryAtPath(`${path}/packages/react-internal/src/components/`)
+    Proj.addDirectoryAtPath(`${offPath}/packages/react-internal/src/components/`)
   ));
 
-  exampleNext.then( v=>  {
-    exampleReact.then(e => {
-      e.deleteImmediately();
-    });
-    return v.moveToDirectory( Proj.addDirectoryAtPath(`${path}/packages/react-examples/src/react/`));
-  });
+  // Don't need to move examples yet, just delete next examples
+  exampleNext.then( v=> v.deleteImmediately())
+  //   exampleReact.then(e => {
+  //     e.deleteImmediately();
+  //   });
+  //   return v.moveToDirectory( Proj.addDirectoryAtPath(`${path}/packages/react-examples/src/react/`));
+  // });
 
   perfFile.then(p => p.delete());
 
   vrFile.then(vr => vr.delete());
 
   // Save deletions and moves and move to phase 2. Renames!
-  Proj.save();
-} catch (e) {
-  throw e;
-} finally {
-  process.cwd(startPath);
 }
 
 /** 

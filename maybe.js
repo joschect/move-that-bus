@@ -1,4 +1,4 @@
-function Maybe(obj) {
+function makeMaybe(obj) {
   if(obj === undefined || obj === null) {
     return new Nothing();
   }
@@ -26,10 +26,10 @@ function Something(value) {
   }
 
   this.then = (fn) => {
-    return Maybe(fn(this.value));
+    return makeMaybe(fn(this.value));
   }
 
   return this;
 }
 
-module.exports = {Maybe, Nothing, Something}
+module.exports = {of: makeMaybe, Nothing, Something}
